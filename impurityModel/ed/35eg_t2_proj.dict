@@ -1,0 +1,59 @@
+# This line is a comment, and thus ignored during parsing
+# Comments must be on their own line! the parser is rather stupid.
+# Each operator can be given a specific name, if the first line of
+# an operator is not a valid single particle state it is interpreted
+# as the name of the operator. If no name is given one will automagically
+# be generated (e.g. Op_0).
+# Two single particle operators form a key, and the value is
+# a complex number with real part and imaginary part separated by
+# a blank space.
+# The key, value pairs should follow the "c-basis" representation,
+# e.g. (l, s, m) (l, s, m) real{val} imag{val}
+#
+# Even if the imaginary part of val is 0, you need to specify it!
+# Different projectors are separated by empty lines.
+# Comments appearing inside an operator are ignored, and do not 
+# count as empty lines.
+
+eg
+# spin down
+(2, 0,  2) (2, 0,  2)  0.5 0
+(2, 0, -2) (2, 0, -2)  0.5 0
+(2, 0,  2) (2, 0, -2) -0.5 0
+(2, 0, -2) (2, 0,  2) -0.5 0
+(2, 0,  1) (2, 0,  1)  0.5 0
+(2, 0, -1) (2, 0, -1)  0.5 0
+(2, 0,  1) (2, 0, -1)  0.5 0
+(2, 0, -1) (2, 0,  1)  0.5 0
+# spin up
+(2, 1,  2) (2, 1,  2)  0.5 0
+(2, 1, -2) (2, 1, -2)  0.5 0
+(2, 1,  2) (2, 1, -2) -0.5 0
+(2, 1, -2) (2, 1,  2) -0.5 0
+(2, 1,  1) (2, 1,  1)  0.5 0
+(2, 1, -1) (2, 1, -1)  0.5 0
+(2, 1,  1) (2, 1, -1)  0.5 0
+(2, 1, -1) (2, 1,  1)  0.5 0
+
+t2g
+# spin down
+(2, 0,  2) (2, 0,  2)  0.5 0
+(2, 0, -2) (2, 0, -2)  0.5 0
+(2, 0,  2) (2, 0, -2)  0.5 0
+(2, 0, -2) (2, 0,  2)  0.5 0
+(2, 0,  1) (2, 0,  1)  0.5 0
+(2, 0, -1) (2, 0, -1)  0.5 0
+(2, 0,  1) (2, 0, -1) -0.5 0
+(2, 0, -1) (2, 0,  1) -0.5 0
+(2, 0,  0) (2, 0,  0)  1.0 0
+
+# spin up
+(2, 1,  2) (2, 1,  2)  0.5 0
+(2, 1, -2) (2, 1, -2)  0.5 0
+(2, 1,  2) (2, 1, -2)  0.5 0
+(2, 1, -2) (2, 1,  2)  0.5 0
+(2, 1,  1) (2, 1,  1)  0.5 0
+(2, 1, -1) (2, 1, -1)  0.5 0
+(2, 1,  1) (2, 1, -1) -0.5 0
+(2, 1, -1) (2, 1,  1) -0.5 0
+(2, 1,  0) (2, 1,  0)  1.0 0

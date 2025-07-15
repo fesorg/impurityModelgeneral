@@ -1,3 +1,6 @@
+
 """
-Package containing tests.
+Package containg unit tests.
+
 """
+

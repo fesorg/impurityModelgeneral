@@ -1,8 +1,13 @@
-"""
-A package dealing with many-body impurity models using exact diagonalization.
-
-    Examples of functionalities:
-        - Calculate spectra, e.g. XAS, XPS, PS.
-        - Calculate static expectation values
 
 """
+Package containg a few exact diagonalization related modules.
+
+"""
+
+#from . import finite
+#from . import spectra
+#from . import average
+#from . import product_state_representation
+#from . import create
+#from . import remove
+

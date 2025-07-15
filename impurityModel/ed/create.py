@@ -1,33 +1,39 @@
+#!/usr/bin/env python3
+
+
 """
+
+create
+======
+
 This module contains functions to create/add an electron to a product state.
 Depending on the representation type of the product state, different functions should be used.
 Supported types are: tuple, str, int, bitarray and bytes.
 
-The ordering convention is such that the normal ordering of a product state is
-`|psi> = c2 c5 |0>`, (and not `c5 c2 |0>`).
+The ordering convention is such that the normal ordering of a product state is |psi> = c2 c5 |0>, (and not c5 c2 |0>).
 
 """
 
+import sys
 from bisect import bisect_left
-
 # Local imports
 from impurityModel.ed import product_state_representation as psr
 
 
 def binary_search_bigger(a, x):
-    """
+    '''
     Return the index to the leftmost value bigger than x,
     if x is not in the list.
 
     If x is in the list, return -1.
 
-    """
+    '''
     i = bisect_left(a, x)
     return i if i == len(a) or a[i] != x else -1
 
 
 def utuple(i, state):
-    """
+    '''
     Create electron at orbital i in state.
 
     Parameters
@@ -45,51 +51,47 @@ def utuple(i, state):
     amp : int
         Amplitude. 0, -1 or 1.
 
-    """
+    '''
     j = binary_search_bigger(state, i)
     if j != -1:
-        amp = 1 if j % 2 == 0 else -1
+        amp = 1 if j%2==0 else -1
         cstate = state[:j] + (i,) + state[j:]
         return cstate, amp
     else:
         return (), 0
 
 
-def uint(n_spin_orbitals: int, i: int, state: int) -> tuple[int, int]:
+def uint(n_spin_orbitals, i, state):
     """
     Create electron at orbital i in state.
 
     Parameters
     ----------
-    n_spin_orbitals:
+    n_spin_orbitals : int
         Total number of spin-orbitals in the system.
-    i:
+    i : int
         Spin-orbital index.
-    state:
+    state : int
         Product state.
 
     Returns
     -------
-    stateNew:
+    stateNew : int
         Product state.
-    amp:
+    amp : int
         Amplitude. 0, -1 or 1.
 
     """
-    i_right = n_spin_orbitals - 1 - i
-    if state & (1 << i_right):
-        # Spin-orbital is already occupied.
-        # Can't add one more electron in that spin-orbital
+    # String representation of product state.
+    s = psr.int2str(state, n_spin_orbitals)
+    if s[i] == "1":
         return -1, 0
-    else:
-        # Create electron with OR-operator
-        state_new = state | (1 << i_right)
-        # Want to count number of electrons in spin-orbitals with index lower than i.
-        # First right bit-shift to get rid of electrons with index equal or bigger than i.
-        # Then count if number of electrons are even or odd.
-        tmp = state >> (i_right + 1)
-        amp = 1 if tmp.bit_count() % 2 == 0 else -1
+    elif s[i] == "0":
+        state_new = state + 2**(n_spin_orbitals-i-1)
+        amp = 1 if s[:i].count("1") % 2 == 0 else -1
         return state_new, amp
+    else:
+        sys.exit("Integer representation of state is wrong.")
 
 
 def ustr(i, state):
@@ -114,11 +116,11 @@ def ustr(i, state):
     if state[i] == "1":
         return "", 0
     elif state[i] == "0":
-        state_new = state[:i] + "1" + state[i + 1 :]
+        state_new = state[:i] + "1" + state[i+1:]
         amp = 1 if state[:i].count("1") % 2 == 0 else -1
         return state_new, amp
     else:
-        raise Exception("String representation of state is wrong.")
+        sys.exit("String representation of state is wrong.")
 
 
 def ubitarray(i, state):
@@ -177,3 +179,4 @@ def ubytes(n_spin_orbitals, i, state):
     # Convert back the updated product state to bytes representation.
     state_new = psr.bitarray2bytes(bits)
     return state_new, amp
+

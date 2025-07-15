@@ -1,0 +1,12 @@
+# Needed python packages
+#sphinx
+#bitarray==0.8.3
+#numpy==1.15.1
+#sympy==1.2
+#scipy==1.1.1
+#h5py==2.8.0
+#numpydoc==0.8.0
+mpi4py
+#pytest==3.8.0
+#matplotlib
+
