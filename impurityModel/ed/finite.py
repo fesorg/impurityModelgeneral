@@ -2301,4 +2301,4 @@ def i2cDict2Array(nBaths, iArray):
         res = []
         for iOp in iArray:
                 res.append(i2cDict(nBaths, iOp))
-
+        return res

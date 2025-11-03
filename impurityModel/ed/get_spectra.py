@@ -18,6 +18,7 @@ from impurityModel.ed import spectra
 from impurityModel.ed import finite
 from impurityModel.ed.finite import c2i
 from impurityModel.ed.average import k_B, thermal_average
+from impurityModel.ed import op_parser
 
 
 def main(h0_filename,
@@ -26,10 +27,11 @@ def main(h0_filename,
          n0imps, doccs, dnTols, dnValBaths, dnConBaths,
          Fdd, Fpp, Fpd, Gpd,
          xi_2p, xi_3d, VP, chargeTransferCorrection,
+         ctex,
          hField, hpField, nPsiMax, nChiMax,
          nPrintSlaterWeights, tolPrintOccupation,
          T, energy_cut,
-         delta, delta_2, POS, deltaRIXS, deltaNIXS, XAS_projectors_filename, RIXS_projectors_filename, dc_method, energymesh, energylossmesh, energyrixsmesh):
+         delta, delta_2, POS, deltaRIXS, deltaNIXS, delta_2NIXS, POSNIXS, XAS_projectors_filename, RIXS_projectors_filename, dc_method, energymesh, energylossmesh, energyrixsmesh):
     """
     First find the lowest eigenstates and then use them to calculate various spectra.
 
@@ -77,6 +79,8 @@ def main(h0_filename,
         corelevel binding on 2P
   chargeTransferCorrection : float
         Double counting parameter
+        ctex:float
+        Double counting to reduce exchange splitting
     hField : tuple
         Magnetic field.
     hpField: tuple
@@ -109,6 +113,12 @@ def main(h0_filename,
          File containing the XAS projectors, separated by an empty line
    RIXS_projectors_filename: string
          File containg the RIXS projectors, separated by an empty line
+   energymesh: float
+        mesh for the XAS, XPS and PS plots first element start, second end, third number of points
+   energylossmesh: float
+        mesh for the RIXS and NIXS plots first element start, second end, third number of points
+    energyrixsmesh: float
+        mesh for the RIXS and NIXS plots first element start, second end, third number of points 
 
 
     """
@@ -215,7 +225,7 @@ def main(h0_filename,
     if rank == 0: print('Construct the Hamiltonian operator...')
     hOp = get_hamiltonian_operator(nBaths, nValBaths, [Fdd, Fpp, Fpd, Gpd],
                                    [xi_2p, xi_3d], VP,
-                                   [n0imps, doccs, chargeTransferCorrection],
+                                   [n0imps, doccs, chargeTransferCorrection, ctex],
                                    hField, hpField, ls[1], ls[0],
                                    h0_filename,rank, dc_method)
     # Measure how many physical processes the Hamiltonian contains.
@@ -281,6 +291,7 @@ def main(h0_filename,
                             Fdd=Fdd, Fpp=Fpp, Fpd=Fpd, Gpd=Gpd,
                             xi_2p=xi_2p, xi_3d=xi_3d, VP=VP,
                             chargeTransferCorrection=chargeTransferCorrection,
+                            ctex=ctex,
                             hField=hField,
                             hpField=hpField,
                             h0_filename=h0_filename,
@@ -319,7 +330,7 @@ def main(h0_filename,
     if rank == 0: print("Consider {:d} eigenstates for the spectra \n".format(len(es)))
 
     spectra.simulate_spectra(es, psis, hOp, T, w, delta, delta_2, POS, epsilons,
-                             wLoss, deltaNIXS, qsNIXS, liNIXS, ljNIXS, RiNIXS, RjNIXS,
+                             wLoss, deltaNIXS, delta_2NIXS, POSNIXS, qsNIXS, liNIXS, ljNIXS, RiNIXS, RjNIXS,
                              radialMesh, wIn, deltaRIXS, epsilonsRIXSin, epsilonsRIXSout,
                              restrictions, h5f, nBaths, ls[1], ls[0], XAS_projectors, RIXS_projectors)
 
@@ -372,7 +383,7 @@ def get_hamiltonian_operator(nBaths, nValBaths, slaterCondon, SOCs, VP,
     # Divide up input parameters to more concrete variables
     Fdd, Fpp, Fpd, Gpd = slaterCondon
     xi_2p, xi_3d = SOCs
-    n0imps, doccs, chargeTransferCorrection = DCinfo
+    n0imps, doccs, chargeTransferCorrection, ctex = DCinfo
     hx, hy, hz = hField
     hpx, hpy, hpz = hpField
     #print('TEST:', n0imps)
@@ -398,6 +409,10 @@ def get_hamiltonian_operator(nBaths, nValBaths, slaterCondon, SOCs, VP,
         for s in range(2):
             for m in range(-l, l+1):
                 eDCOperator[(((l, s, m), 'c'), ((l, s, m), 'a'))] = -dc[il]
+    for m in range(-l, l+1):
+        eDCOperator[(((l, 0, m), 'c'), ((l, 0, m), 'a'))]= eDCOperator[(((l, 0, m), 'c'), ((l, 0, m), 'a'))]+ ctex/2
+        eDCOperator[(((l, 1, m), 'c'), ((l, 1, m), 'a'))]= eDCOperator[(((l, 1, m), 'c'), ((l, 1, m), 'a'))]- ctex/2
+
 
     #core level
     VPOperator={}
@@ -500,7 +515,82 @@ def get_h0_operator(h0_filename, nBaths):
                   raise ValueError("ValueError when construting h0")
 
     return h0_operator
+def read_h0_dict(h0_filename):
+        r'''
+        Reads the non-interacting Hamiltoninan from file.
+        Parameters
+        ----------
+            h0_filename : String
+            File containing the non-interacting Hamiltonian.
+        '''
+        h0_dict = {}
+        for _, op in op_parser.parse_file(h0_filename).items():
+                for key, val in op.items():
+                        if key in h0_dict:
+                                h0_dict[key] += val
+                        else:
+                                h0_dict[key] = val
+        return h0_dict
 
+def get_RIXS_projectors(filename):
+        r'''
+        Reads projectors for the RIXS calculations from file.
+        Parameters
+        ----------
+            filename : String
+            File containing the projectors. Projectors are separated by new lines.
+        '''
+        return op_parser.parse_file(filename)
+
+
+def read_key_val(line):
+        r'''
+        Read key and value pair from a string.
+        Returns a tuple, (key, value).
+        Parameters
+        ----------
+            line : String
+            String of the form "key:value"
+        '''
+        parts = line.split(':')
+        if len(parts) != 2:
+                print ("Error reading key, value pair from file!")
+                print (line)
+                return {}
+        val = complex(parts[1])
+        keys = "".join(parts[0].split())
+        key = read_tuple(keys)
+        return (key , val)
+
+def read_tuple(line):
+        r'''
+        Read arbitratily nested tuples from string.
+        Returns the tuple contained in string.
+        '''
+        store = []
+        tmp_tup = []
+        line = line.replace("(", "(,")
+        line = line.replace(")", ",)")
+        tmp = line.split(',')
+        for cs in tmp:
+                cs = cs.strip()
+                if cs == "(":
+                        store.append(tmp_tup)
+                        tmp_tup = []
+                elif cs == ")":
+                        t = tuple(tmp_tup)
+                        tmp_tup = []
+                        if store:
+                                s = store.pop()
+                                if s:
+                                        tmp_tup = [s[0]]
+                        tmp_tup.append(t)
+                elif cs not in ["("]:
+                        if cs in ["a", "c"]:
+                                tmp_tup.append(cs)
+                        else:
+                                tmp_tup.append(int(cs))
+        return tuple(tmp_tup[0])
 
 if __name__== "__main__":
     # Parse input parameters
@@ -509,7 +599,7 @@ if __name__== "__main__":
                         help='Filename of non-interacting Hamiltonian.')
     parser.add_argument('radial_filename', type=str,
                         help='Filename of radial part of correlated orbitals.')
-    parser.add_argument('--ls', type=int, nargs='+', default=[1, (2,3)],
+    parser.add_argument('--ls', type=int, nargs='+', default=[1, 2],
                         help='Angular momenta of correlated orbitals.')
     parser.add_argument('--nBaths', type=int, nargs='+', default=[0, 10],
                         help='Number of bath states, for each angular momentum.')
@@ -544,6 +634,8 @@ if __name__== "__main__":
                         help='SOC value for d-orbitals. d-orbitals are assumed.')
     parser.add_argument('--chargeTransferCorrection', type=float, default=1.5,
                         help='Double counting parameter.')
+    parser.add_argument('--ctex', type=float, default=0.0,
+                        help='Double counting parameter to reduce exchange splitting.')
     parser.add_argument('--hField', type=float, nargs='+', default=[0, 0, 0.0001],
                         help='Magnetic field. (h_x, h_y, h_z)')
     parser.add_argument('--hpField', type=float, nargs='+', default=[0, 0, 0.0001],
@@ -575,6 +667,10 @@ if __name__== "__main__":
     parser.add_argument('--deltaNIXS', type=float, default=-0.100,
                         help=('Smearing, half width half maximum (HWHM). '
                               'Due to finite lifetime of excited states.'))
+    parser.add_argument('--delta_2NIXS', type=float, default=0.000,                       
+                        help=('Same as delta_2 for NIXS'))
+    parser.add_argument('--POSNIXS', type=float, default=0.0,
+                        help=('Same as POS for NIXS'))
     parser.add_argument('--XAS_projectors_filename', type=str, default=None,
                        help=('File containing    the XAS projectors. Separated by new lines.'))
     parser.add_argument('--RIXS_projectors_filename', type=str, default=None,
@@ -583,9 +679,9 @@ if __name__== "__main__":
                         help=('Double Counting method.'))
     parser.add_argument('--energymesh', type=int, nargs='+', default=[-25, 25, 1000],
                         help=('Energy mesh for plotting the XAS,XPS and PS.'))
-    parser.add_argument('--energylossmesh', type=int, nargs='+', default=[-25, 25, 1000],
+    parser.add_argument('--energylossmesh', type=int, nargs='+', default=[-25, 25, 1000], 
                         help=('Energy loss mesh for plotting the RIXS and NIXS'))
-    parser.add_argument('--energyrixsmesh', type=int, nargs='+', default=[-25, 25, 1000],
+    parser.add_argument('--energyrixsmesh', type=int, nargs='+', default=[-25, 25, 1000], 
                         help=('Energy mesh for plotting the XAS,XPS and PS.'))
     args = parser.parse_args()
 
@@ -620,12 +716,14 @@ if __name__== "__main__":
          Fpd=tuple(args.Fpd), Gpd=tuple(args.Gpd),
          xi_2p=args.xi_2p, xi_3d=args.xi_3d, VP=args.VP,
          chargeTransferCorrection=args.chargeTransferCorrection,
+         ctex=args.ctex,
          hField=tuple(args.hField), nPsiMax=args.nPsiMax,
          hpField=tuple(args.hpField), nChiMax=args.nChiMax,
          nPrintSlaterWeights=args.nPrintSlaterWeights,
          tolPrintOccupation=args.tolPrintOccupation,
          T=args.T, energy_cut=args.energy_cut,
          delta=args.delta, delta_2=args.delta_2, POS=args.POS, deltaRIXS=args.deltaRIXS, deltaNIXS=args.deltaNIXS,
+         delta_2NIXS=args.delta_2NIXS, POSNIXS=args.POSNIXS,
          XAS_projectors_filename=args.XAS_projectors_filename,
          RIXS_projectors_filename=args.RIXS_projectors_filename, dc_method=args.dc_method,
          energymesh=args.energymesh, energylossmesh=args.energylossmesh, energyrixsmesh=args.energyrixsmesh)

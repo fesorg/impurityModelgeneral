@@ -33,7 +33,7 @@ ranks = comm.size
 
 
 def simulate_spectra(es, psis, hOp, T, w, delta, delta_2, POS, epsilons,
-                     wLoss, deltaNIXS, qsNIXS, liNIXS, ljNIXS, RiNIXS, RjNIXS,
+                     wLoss, deltaNIXS, delta_2NIXS, POSNIXS, qsNIXS, liNIXS, ljNIXS, RiNIXS, RjNIXS,
                      radialMesh, wIn, deltaRIXS, epsilonsRIXSin, epsilonsRIXSout,
                      restrictions, h5f, nBaths, lhigh, llow, XAS_projectors, RIXS_projectors):
     """
