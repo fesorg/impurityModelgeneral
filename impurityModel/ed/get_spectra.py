@@ -26,7 +26,7 @@ def main(h0_filename,
          ls, nBaths, nValBaths,
          n0imps, doccs, dnTols, dnValBaths, dnConBaths,
          Umat,
-         xi_2p, xi_3d, xi_ls, VP, chargeTransferCorrection,
+         xi_2p, xi_3d, xi_ls, VP, chargeTransferCorrection, ctex,
          hField, hpField, nPsiMax, nChiMax,
          nPrintSlaterWeights, tolPrintOccupation,
          T, energy_cut,
@@ -80,8 +80,10 @@ def main(h0_filename,
         SOC value for d-orbitals. This assumes d-orbitals.
     VP : float
         corelevel binding on 2P
-  chargeTransferCorrection : float
+    chargeTransferCorrection : float
         Double counting parameter
+    ctex:float
+        Double counting to reduce exchange splitting
     hField : tuple
         Magnetic field.
     hpField: tuple
@@ -226,7 +228,7 @@ def main(h0_filename,
     if rank == 0: print('Construct the Hamiltonian operator...')
     hOp = get_hamiltonian_operator(nBaths, nValBaths, Umat,
                                    [xi_2p, xi_3d], xi_ls, VP,
-                                   [n0imps, doccs, chargeTransferCorrection],
+                                   [n0imps, doccs, chargeTransferCorrection, ctex],
                                    hField, hpField, ls[1], ls[0],
                                    h0_filename,rank, dc_method)
     # Measure how many physical processes the Hamiltonian contains.
@@ -292,6 +294,7 @@ def main(h0_filename,
                             Umat=Umat,
                             xi_2p=xi_2p, xi_3d=xi_3d, xi_ls=xi_ls, VP=VP,
                             chargeTransferCorrection=chargeTransferCorrection,
+                            ctex=ctex,
                             hField=hField,
                             hpField=hpField,
                             h0_filename=h0_filename,
@@ -382,7 +385,7 @@ def get_hamiltonian_operator(nBaths, nValBaths, Umat, SOCs, xi_ls, VP,
     """
     # Divide up input parameters to more concrete variables
     xi_2p, xi_3d = SOCs
-    n0imps, doccs, chargeTransferCorrection = DCinfo
+    n0imps, doccs, chargeTransferCorrection, ctex = DCinfo
     hx, hy, hz = hField
     hpx, hpy, hpz = hpField
     #print('TEST:', n0imps)
@@ -413,6 +416,9 @@ def get_hamiltonian_operator(nBaths, nValBaths, Umat, SOCs, xi_ls, VP,
             for s in range(2):
                 for m in range(-l[y], l[y] + 1):
                     eDCOperator[(((l,y), s, m), 'c'), (((l, y), s, m), 'a')] = -dc[il+y]
+            for m in range(-l[y], l[y]+1):
+                eDCOperator[((((l, y), 0, m), 'c'), (((l, y), 0, m), 'a'))]= eDCOperator[((((l, y), 0, m), 'c'), (((l, y), 0, m), 'a'))]+ ctex/2
+                eDCOperator[((((l, y), 1, m), 'c'), (((l, y), 1, m), 'a'))]= eDCOperator[((((l, y), 1, m), 'c'), (((l, y), 1, m), 'a'))]- ctex/2
         il+=1
     #core level
     VPOperator={}
@@ -655,6 +661,8 @@ if __name__== "__main__":
                          help='SOC values of the other orbitals one wants to excite into.')
     parser.add_argument('--chargeTransferCorrection', type=float, default=1.5,
                         help='Double counting parameter.')
+     parser.add_argument('--ctex', type=float, default=0.0,
+                        help='Double counting parameter to reduce exchange splitting.')
     parser.add_argument('--hField', type=float, nargs='+', default=[0, 0, 0.0001],
                         help='Magnetic field. (h_x, h_y, h_z)')
     parser.add_argument('--hpField', type=float, nargs='+', default=[0, 0, 0.0001],
@@ -753,6 +761,7 @@ if __name__== "__main__":
          #Fpd=tuple(args.Fpd), Gpd=tuple(args.Gpd),
          xi_2p=args.xi_2p, xi_3d=args.xi_3d, xi_ls=tuple([args.xi_ls]), VP=args.VP,
          chargeTransferCorrection=args.chargeTransferCorrection,
+         ctex=args.ctex,
          hField=tuple(args.hField), nPsiMax=args.nPsiMax,
          hpField=tuple(args.hpField), nChiMax=args.nChiMax,
          nPrintSlaterWeights=args.nPrintSlaterWeights,
