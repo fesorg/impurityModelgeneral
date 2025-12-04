@@ -424,7 +424,7 @@ def get_basis(l, nBaths, valBaths, dnValBaths, dnConBaths, dnTol, n0imp):
         for dnVal in range(dnValBaths[l]+1):
             for dnCon in range(dnConBaths[l]+1):
                 deltaNimp = dnVal - dnCon
-                if abs(deltaNimp) <= dnTol[l] and n0imp[l]+deltaNimp <= 2*(2*l+1):
+                if abs(deltaNimp) <= dnTol[l] and n0imp[l]+deltaNimp <= 2*(2*l+1) and n0imp[l]+deltaNimp >=0:
                     nImp = n0imp[l]+deltaNimp
                     nVal = valBaths[l]-dnVal
                     nCon = dnCon
