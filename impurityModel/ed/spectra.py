@@ -33,7 +33,7 @@ ranks = comm.size
 
 
 def simulate_spectra(es, psis, hOp, T, w, delta, delta_2, POS, epsilons,
-                     wLoss, deltaNIXS, delta_2NIXS, POSNIXS, qsNIXS, liNIXS, ljNIXS, RiNIXS, RjNIXS,
+                     wLoss, deltaNIXS, qsNIXS, liNIXS, ljNIXS, RiNIXS, RjNIXS,
                      radialMesh, wIn, deltaRIXS, epsilonsRIXSin, epsilonsRIXSout,
                      restrictions, h5f, nBaths, lhigh, llow, XAS_projectors, RIXS_projectors):
     """
@@ -339,10 +339,14 @@ def getDipoleOperator(nBaths, n):
     nDict = {-1:(n[0]+1j*n[1])/sqrt(2), 0:n[2], 1:(-n[0]+1j*n[1])/sqrt(2)}
     # Angular momentum
     l1, l2 = nBaths.keys()
-    for m in range(-l2, l2+1):
-        for mp in range(-l1, l1+1):
-            for s in range(2):
-                if abs(m-mp) <= 1:
+    assert(isinstance(l1, tuple)) 
+    assert(isinstance(l2, tuple))
+    for z,lp in enumerate(l1): 
+         for y,lv in enumerate(l2):
+            for m in range(-lv, lv+1):
+                for mp in range(-lp, lp+1):
+                    for s in range(2):
+                        if abs(m-mp) <= 1:
                     # See Robert Eder's lecture notes:
                     # "Multiplets in Transition Metal Ions"
                     # in Julich school.
@@ -350,12 +354,12 @@ def getDipoleOperator(nBaths, n):
                     # d - radial integral
                     # n - polarization vector
                     # c - Gaunt coefficient
-                    tij = gauntC(k=1, l=l2, m=m, lp=l1, mp=mp, prec=16)
-                    tij *= nDict[m-mp]
-                    if tij != 0:
-                        i = c2i(nBaths, (l2, s, m))
-                        j = c2i(nBaths, (l1, s, mp))
-                        tOp[((i, 'c'), (j, 'a'))] = tij
+                            tij = gauntC(k=1, l=lv, m=m, lp=lp, mp=mp, prec=16)
+                            tij *= nDict[m-mp]
+                            if tij != 0:
+                                i = c2i(nBaths, ((lv, y), s, m))
+                                j = c2i(nBaths, ((lp, z), s, mp))
+                                tOp[((i, 'c'), (j, 'a'))] = tij
     return tOp
 
 
@@ -497,9 +501,10 @@ def getInversePhotoEmissionOperators(nBaths, l):
     '''
     # Transition operators
     tOpsIPS = []
-    for s in range(2):
-        for m in range(-l,l+1):
-            tOpsIPS.append({((c2i(nBaths, (l, s, m)), 'c'),) : 1})
+    for j,l1 in enumerate(l):
+        for s in range(2):
+            for m in range(-l1,l1+1):
+                tOpsIPS.append({((c2i(nBaths, ((l,j), s, m)), 'c'),) : 1})
     return tOpsIPS
 
 
@@ -511,15 +516,16 @@ def getPhotoEmissionOperators(nBaths, l):
     ----------
     nBaths : OrderedDict
         Angular momentum: number of bath states.
-    l : int
+    l : tuple
         Angular momentum.
 
     '''
     # Transition operators
     tOpsPS = []
-    for s in range(2):
-        for m in range(-l,l+1):
-            tOpsPS.append({((c2i(nBaths, (l, s, m)), 'a'),) : 1})
+    for j,l1 in enumerate(l): 
+        for s in range(2):
+            for m in range(-l1,l1+1):
+                tOpsPS.append({((c2i(nBaths, ((l, j), s, m)), 'a'),) : 1})
     return tOpsPS
 
 

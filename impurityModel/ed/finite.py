@@ -151,28 +151,39 @@ def printThermalExpValues(l, nBaths, es, psis, T=300, cutOff=10):
     mask = e < cutOff*k_B*T
     e = e[mask]
     psis = np.array(psis)[mask]
-    occs = thermal_average(
-        e, np.array([getEgT2gOccupation(l, nBaths, psi) for psi in psis]),
-        T=T)
+    #occs = thermal_average(
+    #    e, np.array([getEgT2gOccupation(l, nBaths, psi) for psi in psis]),
+    #    T=T)
+
+    N =thermal_average(e, [getTraceDensityMatrix(l, nBaths, psi) for psi in psis], T=T))
+    Lz=thermal_average(e,[getLz3d(nBaths, psi) for psi in psis], T=T))
+    Sz=thermal_average(e,[getSz3d(nBaths, psi) for psi in psis], T=T))
+    Lsq=thermal_average(e,[getLsqr3d(l, nBaths, psi) for psi in psis], T=T))
+    Ssq=thermal_average(e,[getSsqr3d(l, nBaths, psi) for psi in psis], T=T))
     if rank == 0:
         print('<E-E0> = {:4.3f}'.format(thermal_average(e, e, T=T)))
-        print('<N(3d)> = {:4.3f}'.format(thermal_average(
-            e, [getTraceDensityMatrix(l, nBaths, psi) for psi in psis], T=T)))
-        print('<N(egDn)> = {:4.3f}'.format(occs[0]))
-        print('<N(egUp)> = {:4.3f}'.format(occs[1]))
-        print('<N(t2gDn)> = {:4.3f}'.format(occs[2]))
-        print('<N(t2gUp)> = {:4.3f}'.format(occs[3]))
-        print('<Lz(3d)> = {:4.3f}'.format(thermal_average(
-            e,[getLz3d(nBaths, psi) for psi in psis], T=T)))
-        print('<Sz(3d)> = {:4.3f}'.format(thermal_average(
-            e,[getSz3d(nBaths, psi) for psi in psis], T=T)))
-        print('<L^2(3d)> = {:4.3f}'.format(thermal_average(
-            e,[getLsqr3d(l, nBaths, psi) for psi in psis], T=T)))
-        print('<S^2(3d)> = {:4.3f}'.format(thermal_average(
-            e,[getSsqr3d(l, nBaths, psi) for psi in psis], T=T)))
+        print('<N(total)> = {:4.3f}'.format(sum(N)))
+        #print('<N(egDn)> = {:4.3f}'.format(occs[0]))
+        #print('<N(egUp)> = {:4.3f}'.format(occs[1]))  #Doesn't make to much sense to transform into cubic for f orbitals and it is too much work for now to also do it in general
+                                                       #Rather plot the densitymatrix if you want
+        #print('<N(t2gDn)> = {:4.3f}'.format(occs[2]))
+        #print('<N(t2gUp)> = {:4.3f}'.format(occs[3]))  
+        print('<Lz(total)> = {:4.3f}'.format(sum(Lz)))
+        print('<Sz(total)> = {:4.3f}'.format(sum(Sz)))
+        for hu in range(len(Lz):
+            print('<N(',hu,')> = {:4.3f}'.format(N[hu]))
+        #print('<N(egDn)> = {:4.3f}'.format(occs[0]))
+        #print('<N(egUp)> = {:4.3f}'.format(occs[1]))  #Doesn't make to much sense to transform into cubic for f orbitals and it is too much work for now to also do it in general
+                                                       #Rather plot the densitymatrix if you want
+        #print('<N(t2gDn)> = {:4.3f}'.format(occs[2]))
+        #print('<N(t2gUp)> = {:4.3f}'.format(occs[3]))
+            print('<Lz(',hu,')> = {:4.3f}'.format(Lz[hu]))
+            print('<Sz(',hu,')> = {:4.3f}'.format(Sz[hu]))
+            print('<S^2(',hu,')> = {:4.3f}'.format(Lsq[hu]))
+            print('<S^2(',hu,')> = {:4.3f}'.format(Ssq[hu]))
 
 
-def dc_MLFT(l, llow, n3d_i, c, Fdd, n2p_i=None, Fpd=None, Gpd=None):
+def dc_MLFT(l, llow, n3d_i, c, n2p_i=None, Umat=None):
     r"""
     Return double counting (DC) in multiplet ligand field theory.
 
@@ -201,30 +212,61 @@ def dc_MLFT(l, llow, n3d_i, c, Fdd, n2p_i=None, Fpd=None, Gpd=None):
     """
    # if not int(n3d_i) == n3d_i:
    #     raise ValueError('3d occupation should be an integer')
-    if n2p_i != None and int(n2p_i) != n2p_i:
-        raise ValueError('2p occupation should be an integer')
+    if isinstance(n3d_i, tuple):
+        if n2p_i != None and int(n2p_i) != n2p_i:
+           raise ValueError('2p occupation should be an integer')
 
     # Average repulsion energy defines Udd and Upd
     #Udd = Fdd[0] - 14.0/441*(Fdd[2] + Fdd[4])
     #Udd =float(Fdd[0] -(2*l+1)/(4*l+1)*(wigner_3j(l,2,l,0,0,0).n(8)**2*Fdd[2]+wigner_3j(l,4,l,0,0,0).n(8)**2*Fdd[4]+wigner_3j(l,6,l,0,0,0).n(8)**2*Fdd[6]))
-    Udd =float(Fdd[0] -(2*l+1)/(4*l+1)*(wigner_3j(l,2,l,0,0,0)**2*Fdd[2]+wigner_3j(l,4,l,0,0,0)**2*Fdd[4]+wigner_3j(l,6,l,0,0,0)**2*Fdd[6]))
+        #Udd =float(Fdd[0] -(2*l[0]+1)/(4*l[0]+1)*(wigner_3j(l[0],2,l[0],0,0,0)**2*Fdd[2]+wigner_3j(l[0],4,l[0],0,0,0)**2*Fdd[4]+wigner_3j(l[i],6,l[i],0,0,0)**2*Fdd[6]))
+        #Upd= float(Fpd[0] - 1/2*(wigner_3j(l[0],1,llow,0,0,0)**2*Gpd[1]+wigner_3j(l[0],3,llow,0,0,0)**2*Gpd[3]+wigner_3j(l[0],5,llow,0,0,0)**2*Gpd[5]))
+        jx=0
+        U=np.zeros((len(l)+1,len(l)+1))
+        Udc=np.zeros(len(l)+1)
+        lall=np.zeros(len(l)+1)
+        lall[0]=llow[0]
+        for i in range(len(l)):
+            lall[i+1]=l[i]
+        for ls in lall:
+            U[jx][jx]=float(Umat[jx][0][0] -(2*ls+1)/(4*ls+1)*(wigner_3j(ls,2,ls,0,0,0)**2*Umat[jx][0][2]+wigner_3j(ls,4,ls,0,0,0)**2*Umat[jx][0][4]+wigner_3j(ls,6,ls,0,0,0)**2*Umat[jx][0][6]))
+            for i in range(jx):
+                U[jx][i]=getUpd(lall[i],lall[jx], Umat[jx][1+i])
+            jx=jx+1
+
+
+        U=np.maximum(U,U.transpose())
+        n=(n2p_i,)+n3d_i
+        for s in range(len(U)):
+            for i in range(len(n)):
+                Udc[s]+=U[s][i]*n[i]-c
+        return Udc
+
+    else:
+        if n2p_i != None and int(n2p_i) != n2p_i:
+            raise ValueError('2p occupation should be an integer')
+
+    # Average repulsion energy defines Udd and Upd
+    #Udd = Fdd[0] - 14.0/441*(Fdd[2] + Fdd[4])
+    #Udd =float(Fdd[0] -(2*l+1)/(4*l+1)*(wigner_3j(l,2,l,0,0,0).n(8)**2*Fdd[2]+wigner_3j(l,4,l,0,0,0).n(8)**2*Fdd[4]+wigner_3j(l,6,l,0,0,0).n(8)**2*Fdd[6]))
+        Udd =float(Fdd[0] -(2*l+1)/(4*l+1)*(wigner_3j(l,2,l,0,0,0)**2*Fdd[2]+wigner_3j(l,4,l,0,0,0)**2*Fdd[4]+wigner_3j(l,6,l,0,0,0)**2*Fdd[6]))
     #print(wigner_3j(l,2,l,0,0,0)**2)
-    if n2p_i==None and Fpd==None and Gpd==None:
-        return Udd*n3d_i - c
+        if n2p_i==None and Fpd==None and Gpd==None:
+            return [0, Udd*n3d_i - c]
     #if (n2p_i==6 or n2p_i==10) and Fpd!=None and Gpd!=None:
     #    if rank==0:
     #        print("FIXME: Fix values for other Orbitals check in rspt Dc.")
     #    Upd = Fpd[0] - (1/15.)*Gpd[1] - (3/70.)*Gpd[3]
     #Upd= float(Fpd[0] - 1/2*(wigner_3j(l,1,llow,0,0,0).n(8)**2*Gpd[1]+wigner_3j(l,3,llow,0,0,0).n(8)**2*Gpd[3]+wigner_3j(l,5,llow,0,0,0).n(8)**2*Gpd[5]))
-    Upd= float(Fpd[0] - 1/2*(wigner_3j(l,1,llow,0,0,0)**2*Gpd[1]+wigner_3j(l,3,llow,0,0,0)**2*Gpd[3]+wigner_3j(l,5,llow,0,0,0)**2*Gpd[5]))
+        Upd= float(Fpd[0] - 1/2*(wigner_3j(l,1,llow,0,0,0)**2*Gpd[1]+wigner_3j(l,3,llow,0,0,0)**2*Gpd[3]+wigner_3j(l,5,llow,0,0,0)**2*Gpd[5]))
     #print(wigner_3j(l,1,llow,0,0,0)**2)
     #print('n2p_i:', n2p_i)
-    return [Udd*n3d_i+Upd*n2p_i-c,Upd*(n3d_i+1)-c]
+        return [Upd*(n3d_i+1)-c, Udd*n3d_i+Upd*np2p_i-c]
     #    return [Udd*n3d_i+Upd*n2p_i-c,Upd*(n3d_i+1)-c]
     #else:
     #    raise ValueError('double counting input wrong.')
     
-def dc_FLL(lhigh, llow, n3d_i, c, Fdd, n2p_i=None, Fpd=None, Gpd=None):
+def dc_FLL(lhigh, llow, n3d_i, c, Fdd, n2p_i=None, Umat=None):
     r"""
     Return double counting (DC) in fully localised limit.
 
@@ -423,51 +465,53 @@ def get_basis(l, nBaths, valBaths, dnValBaths, dnConBaths, dnTol, n0imp):
         # Loop over different occupation partitions
         for dnVal in range(dnValBaths[l]+1):
             for dnCon in range(dnConBaths[l]+1):
-                deltaNimp = dnVal - dnCon
-                if abs(deltaNimp) <= dnTol[l] and n0imp[l]+deltaNimp <= 2*(2*l+1) and n0imp[l]+deltaNimp >=0:
-                    nImp = n0imp[l]+deltaNimp
-                    nVal = valBaths[l]-dnVal
-                    nCon = dnCon
+                for y in range(len(l)):
+                    deltaNimp = dnVal - dnCon
+                    if abs(deltaNimp) <= dnTol[l][y] and n0imp[l][y]+deltaNimp <= 2*(2*l[y]+1) and n0imp[l][y]+deltaNimp >= 0:
+                        nImp = n0imp[l][y]+deltaNimp
+                        nVal = valBaths[l]-dnVal
+                        nCon = dnCon
 
-                    if rank == 0: print('New partition occupations:')
+                        if rank == 0: print('New partition occupations:')
                     #if rank == 0:
                     #    print('nImp,dnVal,dnCon = {:d},{:d},{:d}'.format(
                     #        nImp,dnVal,dnCon))
-                    if rank == 0:
-                        print('nImp,nVal,nCon = {:d},{:d},{:d}'.format(
-                            nImp, nVal, nCon))
+                        if rank == 0:
+                            print('nImp,nVal,nCon = {:d},{:d},{:d}'.format(
+                                nImp, nVal, nCon))
                     # Check for over-occupation
-                    assert nVal <= valBaths[l]
-                    assert nCon <= nBaths[l]-valBaths[l]
-                    assert nImp <= 2*(2*l+1)
+                        assert nVal <= valBaths[l]
+                        assert nCon <= nBaths[l]-valBaths[l]
+                        assert nImp <= 2*(2*l[y]+1)
+                        assert nImp >= 0
                     # Impurity electron indices
-                    indices = [c2i(nBaths, (l, s, m)) for s in range(2) for m in range(-l, l+1)]
-                    basisImp = tuple(itertools.combinations(indices, nImp))
+                        indices = [c2i(nBaths, ((l, y), s, m)) for s in range(2) for m in range(-l[y], l[y]+1)]
+                        basisImp = tuple(itertools.combinations(indices, nImp))
                     # Valence bath electrons
-                    if valBaths[l] == 0:
+                        if valBaths[l] == 0:
                         # One way of having zero electrons
                         # in zero spin-orbitals
-                        basisVal = ((),)
-                    else:
+                            basisVal = ((),)
+                        else:
                         # Valence bath state indices
-                        indices = [c2i(nBaths, (l, b)) for b in range(valBaths[l])]
-                        basisVal = tuple(itertools.combinations(indices,nVal))
+                            indices = [c2i(nBaths, (l, b)) for b in range(valBaths[l])]
+                            basisVal = tuple(itertools.combinations(indices,nVal))
                     # Conduction bath electrons
-                    if nBaths[l]-valBaths[l] == 0:
+                        if nBaths[l]-valBaths[l] == 0:
                         # One way of having zero electrons
                         # in zero spin-orbitals
-                        basisCon = ((),)
-                    else:
+                            basisCon = ((),)
+                        else:
                         # Conduction bath state indices
-                        indices = [c2i(nBaths, (l, b)) for b in range(valBaths[l], nBaths[l])]
-                        basisCon = tuple(itertools.combinations(indices,nCon))
+                            indices = [c2i(nBaths, (l, b)) for b in range(valBaths[l], nBaths[l])]
+                            basisCon = tuple(itertools.combinations(indices,nCon))
                     # Concatenate partitions
-                    for bImp in basisImp:
-                        for bVal in basisVal:
-                            for bCon in basisCon:
-                                basisL[l].append(bImp+bVal+bCon)
+                        for bImp in basisImp:
+                            for bVal in basisVal:
+                                for bCon in basisCon:
+                                    basisL[l].append(bImp+bVal+bCon)
     # Total number of spin-orbitals in the system
-    n_spin_orbitals = sum(2*(2*ang+1) + nBath for ang, nBath in nBaths.items())
+    n_spin_orbitals = sum(2*(2*sum(ang)+len(ang)) + nBath for ang, nBath in nBaths.items())
     basis = []
     for configuration in itertools.product(*basisL.values()):
         # Convert product state representation from a tuple to a object
@@ -489,9 +533,9 @@ def arrayOp(nBaths,pOp):
 
    '''
    dsize = 0
-   for l,nb in nBaths.items():
-      print("l,nb = ",l,nb)
-      dsize += nb+(2*l+1)*2
+   for ls,nb in nBaths.items():
+        print("l,nb = ",l,nb)
+        dsize += nb+(2*sum(ls)+len(ls))*2
    a = np.zeros((dsize,dsize),dtype=complex)
    for t,val in pOp.items():
       # Only one particle terms
@@ -723,7 +767,7 @@ def getNoSpinUop(l1,l2,l3,l4,R):
     return uDict
 
 
-def getUop(l1, l2, l3, l4, R):
+def getUop(l1, l2, l3, l4, R, i1, i2, i3, i4, ls):
     r'''
     Return U operator.
 
@@ -746,6 +790,8 @@ def getUop(l1, l2, l3, l4, R):
 
     '''
     uDict = {}
+    Is = [i1, i2, i3, i4]
+    x = [1 if i > 0 else 0 for i in Is]
     for m1 in range(-l1,l1+1):
         for m2 in range(-l2,l2+1):
             for m3 in range(-l3,l3+1):
@@ -754,8 +800,8 @@ def getUop(l1, l2, l3, l4, R):
                     if u != 0:
                         for s in range(2):
                             for sp in range(2):
-                                proccess = (((l1, s, m1), 'c'), ((l2, sp, m2), 'c'),
-                                            ((l3, sp, m3), 'a'), ((l4, s, m4), 'a'))
+                                proccess = ((((ls[x[0]], i1-x[0]), s, m1), 'c'), (((ls[x[1]], i2-x[1]), sp, m2), 'c'),
+                                            (((ls[x[2]], i3-x[2]), sp, m3), 'a'), (((ls[x[3]], i4-x[3]) ,s, m4), 'a'))
                                 # Pauli exclusion principle
                                 if not(s == sp and
                                        ((l1,m1) == (l2,m2) or
@@ -788,9 +834,12 @@ def addOps(ops):
                   opSum[sOp] = value
     return opSum
 
+def getUpd(l1, l2, Umat):
+    Upd= float(Umat[0] - 1/2*(wigner_3j(l2,1,l1,0,0,0)**2*Umat[1]+wigner_3j(l2,3,l1,0,0,0)**2*Umat[3]+wigner_3j(l2,5,l1,0,0,0)**2*Umat[5]))
+    return Upd
 
-def get2p3dSlaterCondonUop(l, Fdd=[9,0,8,0,6], Fpp=[20,0,8],
-                            Fpd=[10,0,8], Gpd=[0,3,0,2]):
+def get2p3dSlaterCondonUop(lv, l0, Umat=[[[20,0,8]], [[10,0,8, 0,6],[10,3,8,2]],
+                            [[0,0,0,0,0,0,0], [0,0,0,0,0,0], [0,0,0,0,0,0]]]):
     '''
     Return a 2p-3d U operator containing a sum of
     different Slater-Condon proccesses.
@@ -803,23 +852,57 @@ def get2p3dSlaterCondonUop(l, Fdd=[9,0,8,0,6], Fpp=[20,0,8],
     Gpd : list
 
     '''
+    #if isinstance(l, tuple):
+    #    lx=l[0]
+    #    ix=2
+    #    jx=0
+    #    for ls in l[1:]:
+    #        F[ls]=getUmatop(l0,l[:ls], ls, Uval[jx:jx+ix+1])
+    #        ix=ix+1
+    #        jx=jx+ix
+    #    UmatOp=addOps(F)
+    #else:
+    #    lx=l
     # Calculate F_dd^{0,2,4}
-    FddOp = getUop(l1=l,l2=l,l3=l,l4=l,R=Fdd)
+    #FddOp = getUop(l1=lx,l2=lx,l3=lx,l4=lx,R=Fdd)
     # Calculate F_pp^{0,2}
-    FppOp = getUop(l1=l-1,l2=l-1,l3=l-1,l4=l-1,R=Fpp)
+    #FppOp = getUop(l1=l0,l2=l0,l3=l0,l4=l0,R=Fpp)
     # Calculate F_pd^{0,2}
-    FpdOp1 = getUop(l1=l-1,l2=l,l3=l,l4=l-1,R=Fpd)
-    FpdOp2 = getUop(l1=l,l2=l-1,l3=l-1,l4=l,R=Fpd)
-    FpdOp = addOps([FpdOp1,FpdOp2])
+    #FpdOp1 = getUop(l1=l0,l2=lx,l3=lx,l4=l0,R=Fpd)
+    #FpdOp2 = getUop(l1=lx,l2=l0,l3=l0,l4=lx,R=Fpd)
+    #FpdOp = addOps([FpdOp1,FpdOp2])
     # Calculate G_pd^{1,3}
-    GpdOp1 = getUop(l1=l-1,l2=l,l3=l-1,l4=l,R=Gpd)
-    GpdOp2 = getUop(l1=l,l2=l-1,l3=l,l4=l-1,R=Gpd)
-    GpdOp = addOps([GpdOp1,GpdOp2])
+    #GpdOp1 = getUop(l1=l0,l2=l,l3=l0,l4=l,R=Gpd)
+    #GpdOp2 = getUop(l1=l,l2=l0,l3=l,l4=l0,R=Gpd)
+    #GpdOp = addOps([GpdOp1,GpdOp2])
     # Add operators
-    uOp = addOps([FddOp,FppOp,FpdOp,GpdOp])
+    #uOp = addOps([FddOp,FppOp,FpdOp,GpdOp])
+    #if isinstance(l, tuple):
+    #    uOp= addOps([uOp, UmatOp])
+    F={}
+    Umatop={}
+    ls=(l0,lv)
+    l=[]
+    l.append(l0[0])
+    for i in lv:
+        l.append(i)
+    for i in range(len(Umat)):
+        Fllop=getUop(l1=l[i],l2=l[i],l3=l[i],l4=l[i],R=Umat[i][0], i1=i, i2=i, i3=i, i4=i, ls=ls) #Diagonal elements
+        F=addOps([F, Fllop])
+        for j in range(len(Umat[i])-1): #Only goes in when Umat has two elements
+            F1llyOp= getUop(l1=l[j],l2=l[i],l3=l[i],l4=l[j],R=Umat[i][j+1], i1=j, i2=i, i3=i, i4=j, ls=ls) # Umat has diagonal as 0, so there j needs to go from the second to last, but it counts ls correctly
+            F2llyOp= getUop(l1=l[i],l2=l[j],l3=l[j],l4=l[i],R=Umat[i][j+1], i1=i, i2=j, i3=j, i4=i, ls=ls)
+            FllyOp= addOps([F1llyOp, F2llyOp])
+            G1llyOp= getUop(l1=l[j],l2=l[i],l3=l[j],l4=l[i],R=Umat[i][j+1], i1=j, i2=i, i3=j, i4=i, ls=ls)
+            G2llyOp= getUop(l1=l[i],l2=l[j],l3=l[i],l4=l[j],R=Umat[i][j+1], i1=i, i2=j, i3=i, i4=j, ls=ls)
+            GllyOp= addOps([G1llyOp, G2llyOp])
+            Umatop=addOps([ Umatop, FllyOp, GllyOp])
+    uOp=addOps([F, Umatop])
+
+        
     return uOp
 
-def getSOCop(xi,l):
+def getSOCop(xi,ls,il):
     '''
     Return SOC operator for one l-shell.
 
@@ -832,16 +915,25 @@ def getSOCop(xi,l):
 
     '''
     opDict = {}
+    l = ls[il]
     for m in range(-l, l+1):
         for s in range(2):
             value = xi*m*(1/2. if s==1 else -1/2.)
-            opDict[(((l, s, m), 'c'), ((l, s, m), 'a'))] = value
+            opDict[((((ls,il), s, m), 'c'), (((ls, il), s, m), 'a'))] = value
     for m in range(-l, l):
         value = xi/2.*sqrt((l-m)*(l+m+1))
-        opDict[(((l, 1, m), 'c'), ((l, 0, m+1), 'a'))] = value
-        opDict[(((l, 0, m+1), 'c'), ((l, 1, m), 'a'))] = value
+        opDict[((((ls, il), 1, m), 'c'), (((ls, il), 0, m+1), 'a'))] = value
+        opDict[((((ls, il), 0, m+1), 'c'), (((ls, il), 1, m), 'a'))] = value
     return opDict
 
+def  getSOCsop(xi,l):
+    '''
+    Return SOC operator for tuple of ls except the first element as it is treated in SOC3d
+    '''
+    for i in range(len(xi)):
+        SOCop[i]= getSOCop(xi[i],l, i+1)
+    SOCsop=addOps(SOCop)
+    return SOCsop
 
 def c2i(nBaths, spinOrb):
     '''
@@ -872,8 +964,7 @@ def c2i(nBaths, spinOrb):
 
 
 
-
-
+    assert(isinstance(spinOrb[0], tuple))
     for lp in nBaths.keys():
         if isinstance(lp, int):
             for sp in range(2):
@@ -883,10 +974,10 @@ def c2i(nBaths, spinOrb):
                     i += 1
         elif isinstance(lp, tuple):
             # Loop over all different angular momenta in lp.
-            for lp_int in lp:
+            for j,lp_int in enumerate(lp):
                 for sp in range(2):
                     for mp in range(-lp_int, lp_int+1):
-                        if (lp_int, sp, mp) == spinOrb:
+                        if ((lp,j), sp, mp) == spinOrb:
                             return i
                         i += 1
     # If reach this point it means spinOrb is a bath state.
@@ -896,7 +987,7 @@ def c2i(nBaths, spinOrb):
             if (lp, b) == spinOrb:
                 return i
             i += 1
-    print(spinOrb)
+    print("I can't find this spinorbital", spinOrb)
     sys.exit('Can not find index corresponding to spin-orbital state')
 
 
@@ -938,13 +1029,13 @@ def i2c(nBaths, i):
             k += 2*(2*lp+1)
         elif isinstance(lp, tuple):
             # Loop over all different angular momenta in lp.
-            for lp_int in lp:
+            for j,lp_int in enumerate(lp):
                 # Check if index "i" belong to impurity spin-orbital having lp_int.
                 if i - k < 2*(2*lp_int+1):
                     for sp in range(2):
                         for mp in range(-lp_int, lp_int+1):
                             if k == i:
-                                return (lp_int, sp, mp)
+                                return ((lp, j), sp, mp)
                             k += 1
                 k += 2*(2*lp_int+1)
     # If reach this point it means index "i" belong to a bath state.
@@ -973,16 +1064,17 @@ def getLz3d(nBaths, psi):
 
     '''
     # Total number of spin-orbitals in the system
-    n_spin_orbitals = sum(2*(2*ang+1) + nBath for ang, nBath in nBaths.items())
-    Lz = 0
+    n_spin_orbitals = sum(2*(2*sum(ang)+len(ang)) + nBath for ang, nBath in nBaths.items())
+    Lz = np.zeros(len(ang))
     for state, amp in psi.items():
-        tmp = 0
+        tmp = np.zeros(len(ang))
         for i in psr.bytes2tuple(state, n_spin_orbitals):
             spinOrb = i2c(nBaths, i)
-            # Look for spin-orbitals of the shape: spinOrb = (l, s, ml), with l=2.
+            # Look for spin-orbitals of the shape: spinOrb = ((l, y) s, ml), with l=2.
             if len(spinOrb) == 3:# and spinOrb[0] == 2:
-                tmp += spinOrb[2]
-        Lz += tmp * abs(amp)**2
+                tmp[spinorb[0][1]] += spinOrb[2]
+        for i in range(len(tmp)):
+            Lz[i] += tmp[i] * abs(amp)**2
     return Lz
 
 
@@ -999,16 +1091,17 @@ def getSz3d(nBaths, psi):
 
     """
     # Total number of spin-orbitals in the system
-    n_spin_orbitals = sum(2*(2*ang+1) + nBath for ang, nBath in nBaths.items())
-    Sz = 0
+    n_spin_orbitals = sum(2*(2*sum(ang)+len(ang)) + nBath for ang, nBath in nBaths.items())
+    Sz = np.zeros(len(ang))
     for state,amp in psi.items():
-        tmp = 0
+        tmp = np.zeros(len(ang))
         for i in psr.bytes2tuple(state, n_spin_orbitals):
             spinOrb = i2c(nBaths,i)
             # Look for spin-orbitals of the shape: spinOrb = (l, s, ml), with l=2.
             if len(spinOrb) == 3:#and spinOrb[0] == 2: no need to check if l=2, full shells don't contribute
-                tmp += -1/2 if spinOrb[1]==0 else 1/2
-        Sz += tmp * abs(amp)**2
+                tmp[spinorb[0][1]] += -1/2 if spinOrb[1]==0 else 1/2
+        for i in range(len(tmp)):
+            Sz[i] += tmp[i] * abs(amp)**2
     return Sz
 
 
@@ -1024,13 +1117,16 @@ def getSsqr3d(l, nBaths, psi, tol=1e-8):
         normalized multi configurational state.
 
     '''
-    psi1 = applySz3d(l, nBaths, psi)
-    psi2 = applySplus3d(l, nBaths, psi)
-    psi3 = applySminus3d(l, nBaths, psi)
-    S2 = norm2(psi1) + 1/2*(norm2(psi2)+norm2(psi3))
-    if S2.imag > tol:
-        print('Warning: <S^2> complex valued!')
-    return S2.real
+    Ssq=np.zeros(len(l)
+    for y in range(len(l)):
+        psi1 = applySz3d((l, y), nBaths, psi)
+        psi2 = applySplus3d((l, y), nBaths, psi)
+        psi3 = applySminus3d((l, y), nBaths, psi)
+        S2 = norm2(psi1) + 1/2*(norm2(psi2)+norm2(psi3))
+        if S2.imag > tol:
+            print('Warning: <S^2> complex valued!')
+        Ssq[y]=S2.real
+    return Ssq
 
 
 def getLsqr3d(l, nBaths, psi, tol=1e-8):
@@ -1045,13 +1141,16 @@ def getLsqr3d(l, nBaths, psi, tol=1e-8):
         normalized multi configurational state.
 
     '''
-    psi1 = applyLz3d(l, nBaths, psi)
-    psi2 = applyLplus3d(l, nBaths, psi)
-    psi3 = applyLminus3d(l, nBaths, psi)
-    L2 = norm2(psi1) + 1/2*(norm2(psi2)+norm2(psi3))
-    if L2.imag > tol:
-        print('Warning: <L^2> complex valued!')
-    return L2.real
+    Lsq=np.zeros(len(l)
+    for y in range(len(l)):
+        psi1 = applyLz3d(l, nBaths, psi)
+        psi2 = applyLplus3d(l, nBaths, psi)
+        psi3 = applyLminus3d(l, nBaths, psi)
+        L2 = norm2(psi1) + 1/2*(norm2(psi2)+norm2(psi3))
+        if L2.imag > tol:
+            print('Warning: <L^2> complex valued!')
+        Lsq[y]=L2.real
+    return Lsq
 
 
 def getTraceDensityMatrix(l, nBaths, psi):
@@ -1069,16 +1168,17 @@ def getTraceDensityMatrix(l, nBaths, psi):
 
     """
     # Total number of spin-orbitals in the system
-    n_spin_orbitals = sum(2*(2*ang+1) + nBath for ang, nBath in nBaths.items())
+    n_spin_orbitals = sum(2*(2*sum(ang)+len(ang)) + nBath for ang, nBath in nBaths.items())
     n = 0
     for state, amp in psi.items():
         s = psr.bytes2str(state, n_spin_orbitals)
         nState = 0
         for spin in range(2):
-            for m in range(-l,l+1):
-                i = c2i(nBaths, (l, spin, m))
-                if s[i] == "1":
-                    nState += 1
+            for y in range(len(l)):
+                for m in range(-l[y],l[y]+1):
+                    i = c2i(nBaths, ((l,y) spin, m))
+                    if s[i] == "1":
+                        nState += 1
         nState *= abs(amp)**2
         n += nState
     return n
@@ -1116,19 +1216,19 @@ def getDensityMatrix(l, nBaths, psi):
 
     '''
     # Total number of spin-orbitals in the system
-    n_spin_orbitals = sum(2*(2*ang+1) + nBath for ang, nBath in nBaths.items())
+    n_spin_orbitals = sum(2*(2*sum(ang)+len(ang)) + nBath for ang, nBath in nBaths.items())
     densityMatrix = OrderedDict()
     for si in range(2):
         for sj in range(2):
-            for mi in range(-l,l+1):
-                    for mj in range(-l,l+1):
-                        i = c2i(nBaths, (l, si, mi))
-                        j = c2i(nBaths, (l, sj, mj))
+            for mi in range(-l[y],l[y]+1):
+                    for mj in range(-l[x],l[x]+1):
+                        i = c2i(nBaths, ((l, y), si, mi))
+                        j = c2i(nBaths, ((l, x), sj, mj))
                         psi_new = a(n_spin_orbitals, i, psi)
                         psi_new = c(n_spin_orbitals, j, psi_new)
                         tmp = inner(psi, psi_new)
                         if tmp != 0:
-                            densityMatrix[((l, si, mi), (l, sj, mj))] = tmp
+                            densityMatrix[(((l, y), si, mi), ((l, x), sj, mj))] = tmp
     return densityMatrix
 
 
@@ -1198,35 +1298,37 @@ def getEgT2gOccupation(l, nBaths, psi):
 
     '''
     # Total number of spin-orbitals in the system
-    n_spin_orbitals = sum(2*(2*ang+1) + nBath for ang, nBath in nBaths.items())
+    n_spin_orbitals = sum(2*(2*sum(ang)+len(ang)) + nBath for ang, nBath in nBaths.items())
     # |i(cubic)> = sum_j u[j,i] |j(spherical)>
     u = get_spherical_2_cubic_matrix(l, False)
-    eg_dn, eg_up, t2g_dn, t2g_up = 0, 0, 0, 0
-    for i in range(2*l+1):
-        for j,mj in enumerate(range(-l,l+1)):
-            for k,mk in enumerate(range(-l,l+1)):
-                for s in range(2):
-                    jj = c2i(nBaths, (l, s, mj))
-                    kk = c2i(nBaths, (l, s, mk))
-                    psi_new = a(n_spin_orbitals, kk, psi)
-                    psi_new = c(n_spin_orbitals, jj, psi_new)
-                    v = u[j,i]*np.conj(u[k,i])*inner(psi, psi_new)
-                    if i<2:
-                        if s==0:
-                            eg_dn += v
+    occs=np.zeros((len(l), 4))
+    for y in range(len(l):
+            eg_dn, eg_up, t2g_dn, t2g_up = 0, 0, 0, 0
+        for i in range(2*l[y]+1):
+            for j,mj in enumerate(range(-l[y],l[y]+1)):
+                for k,mk in enumerate(range(-l[y],l[y]+1)):
+                    for s in range(2):
+                        jj = c2i(nBaths, ((l, y), s, mj))
+                        kk = c2i(nBaths, ((l, y), s, mk))
+                        psi_new = a(n_spin_orbitals, kk, psi)
+                        psi_new = c(n_spin_orbitals, jj, psi_new)
+                        v = u[j,i]*np.conj(u[k,i])*inner(psi, psi_new)
+                        if i<2:
+                            if s==0:
+                                eg_dn += v
+                            else:
+                                eg_up += v
                         else:
-                            eg_up += v
-                    else:
-                        if s==0:
-                            t2g_dn += v
-                        else:
-                            t2g_up += v
-    occs = [eg_dn, eg_up, t2g_dn, t2g_up]
-    for i in range(len(occs)):
-        if abs(occs[i].imag) < 1e-12:
-            occs[i] = occs[i].real
-        else:
-            print('Warning: Complex occupation')
+                            if s==0:
+                                t2g_dn += v
+                            else:
+                                t2g_up += v
+        occs[y] = [eg_dn, eg_up, t2g_dn, t2g_up]
+        for i in range(len(occs)):
+            if abs(occs[y][i].imag) < 1e-12:
+                occs[y][i] = occs[y][i].real
+            else:
+                print('Warning: Complex occupation')
     return occs
 
 
@@ -1249,13 +1351,14 @@ def applySz3d(l, nBaths, psi):
 
     '''
     # Total number of spin-orbitals in the system
-    n_spin_orbitals = sum(2*(2*ang+1) + nBath for ang, nBath in nBaths.items())
+    n_spin_orbitals = sum(2*(2*sum(ang)+len(ang)) + nBath for ang, nBath in nBaths.items())
     psiNew = {}
     for s in range(2):
-        for m in range(-l,l+1):
-            i = c2i(nBaths,(l,s, m))
-            psiP = c(n_spin_orbitals, i, a(n_spin_orbitals, i, psi))
-            addToFirst(psiNew, psiP, 1/2 if s==1 else -1/2)
+        for y in range(len(l)):
+            for m in range(-l[y],l[y]+1):
+                i = c2i(nBaths,((l,y),s, m))
+                psiP = c(n_spin_orbitals, i, a(n_spin_orbitals, i, psi))
+                addToFirst(psiNew, psiP, 1/2 if s==1 else -1/2)
     return psiNew
 
 
@@ -1278,13 +1381,14 @@ def applyLz3d(l, nBaths, psi):
 
     '''
     # Total number of spin-orbitals in the system
-    n_spin_orbitals = sum(2*(2*ang+1) + nBath for ang, nBath in nBaths.items())
+    n_spin_orbitals = sum(2*(2*sum(ang)+len(ang)) + nBath for ang, nBath in nBaths.items())
     psiNew = {}
     for s in range(2):
-        for m in range(-l,l+1):
-            i = c2i(nBaths, (l, s, m))
-            psiP = c(n_spin_orbitals, i, a(n_spin_orbitals, i, psi))
-            addToFirst(psiNew, psiP, m)
+        for y in range(len(l)):
+            for m in range(-l,l+1):
+                i = c2i(nBaths, ((l, y), s, m))
+                psiP = c(n_spin_orbitals, i, a(n_spin_orbitals, i, psi))
+                addToFirst(psiNew, psiP, m)
     return psiNew
 
 
@@ -1307,15 +1411,16 @@ def applySplus3d(l, nBaths, psi):
 
     '''
     # Total number of spin-orbitals in the system
-    n_spin_orbitals = sum(2*(2*ang+1) + nBath for ang, nBath in nBaths.items())
+    n_spin_orbitals = sum(2*(2*sum(ang)+len(ang))) + nBath for ang, nBath in nBaths.items())
     psiNew = {}
-    for m in range(-l,l+1):
-        i = c2i(nBaths,(l, 1, m))
-        j = c2i(nBaths,(l, 0, m))
-        psiP = c(n_spin_orbitals, i, a(n_spin_orbitals, j, psi))
+    for y in range(len(l)):
+        for m in range(-l[y],l[y]+1):
+            i = c2i(nBaths,((l, y), 1, m))
+            j = c2i(nBaths,((l, y), 0, m))
+            psiP = c(n_spin_orbitals, i, a(n_spin_orbitals, j, psi))
         # sQ = 1/2.
         # sqrt((sQ-(-sQ))*(sQ+(-sQ)+1)) == 1
-        addToFirst(psiNew, psiP)
+            addToFirst(psiNew, psiP)
     return psiNew
 
 
@@ -1338,15 +1443,16 @@ def applyLplus3d(l, nBaths, psi):
 
     '''
     # Total number of spin-orbitals in the system
-    n_spin_orbitals = sum(2*(2*ang+1) + nBath for ang, nBath in nBaths.items())
+    n_spin_orbitals = sum(2*(2*sum(ang)+len(ang)) + nBath for ang, nBath in nBaths.items())
     psiNew = {}
   
     for s in range(2):
-        for m in range(-l,l):
-            i = c2i(nBaths,(l, s, m+1))
-            j = c2i(nBaths,(l, s, m))
-            psiP = c(n_spin_orbitals, i, a(n_spin_orbitals, j, psi))
-            addToFirst(psiNew, psiP, sqrt((l-m)*(l+m+1)))
+        for y in range(len(l)):
+            for m in range(-l[y],l[y]):
+                i = c2i(nBaths,((l, y), s, m+1))
+                j = c2i(nBaths,((l, y), s, m))
+                psiP = c(n_spin_orbitals, i, a(n_spin_orbitals, j, psi))
+                addToFirst(psiNew, psiP, sqrt((l-m)*(l+m+1)))
     return psiNew
 
 
@@ -1369,15 +1475,16 @@ def applySminus3d(l, nBaths, psi):
 
     '''
     # Total number of spin-orbitals in the system
-    n_spin_orbitals = sum(2*(2*ang+1) + nBath for ang, nBath in nBaths.items())
+    n_spin_orbitals = sum(2*(2*sum(ang)+len(ang)) + nBath for ang, nBath in nBaths.items())
     psiNew = {}
-    for m in range(-l,l+1):
-        i = c2i(nBaths, (l, 0, m))
-        j = c2i(nBaths, (l, 1, m))
-        psiP = c(n_spin_orbitals, i, a(n_spin_orbitals, j, psi))
+    for y in range(len(l)):
+        for m in range(-l[y],l[y]+1):
+            i = c2i(nBaths, ((l, y), 0, m))
+            j = c2i(nBaths, ((l, y), 1, m))
+            psiP = c(n_spin_orbitals, i, a(n_spin_orbitals, j, psi))
         # sQ = 1/2.
         # sqrt((sQ+sQ)*(sQ-sQ+1)) == 1
-        addToFirst(psiNew, psiP)
+            addToFirst(psiNew, psiP)
     return psiNew
 
 
@@ -1400,14 +1507,15 @@ def applyLminus3d(l, nBaths, psi):
 
     '''
     # Total number of spin-orbitals in the system
-    n_spin_orbitals = sum(2*(2*ang+1) + nBath for ang, nBath in nBaths.items())
+    n_spin_orbitals = sum(2*(2*sum(ang)+len(ang)) + nBath for ang, nBath in nBaths.items())
     psiNew = {}
     for s in range(2):
-        for m in range(-l+1,l+1):
-            i = c2i(nBaths, (l, s, m-1))
-            j = c2i(nBaths, (l, s, m))
-            psiP = c(n_spin_orbitals, i, a(n_spin_orbitals, j, psi))
-            addToFirst(psiNew, psiP, sqrt((l+m)*(l-m+1)))
+        for y in range(len(l)):
+            for m in range(-l[y]+1,l[y]+1):
+                i = c2i(nBaths, ((l, y), s, m-1))
+                j = c2i(nBaths, ((l, y), s, m))
+                psiP = c(n_spin_orbitals, i, a(n_spin_orbitals, j, psi))
+                addToFirst(psiNew, psiP, sqrt((l+m)*(l-m+1)))
     return psiNew
 
 
@@ -2171,7 +2279,7 @@ def arrayOp(nBaths,pOp):
    '''
    dsize = 0
    for l,nb in nBaths.items():
-      dsize += nb+(2*l+1)*2
+      dsize += nb+(2*sum(l)+len(l))*2
    a = np.zeros((dsize,dsize),dtype=complex)
    for t,val in pOp.items():
       # Only one particle terms
@@ -2264,7 +2372,7 @@ def iOpToMatrix(nBaths, op):
    '''
    dsize = 0
    for l,nb in nBaths.items():
-      dsize += nb+(2*l+1)*2
+      dsize += nb+(2*sum(l)+len(l))*2
    m = np.zeros((dsize,dsize),dtype=complex)
    for ((i, opi), (j, opj)), val in op.items():
        if opi == 'c' and opj == 'a':
@@ -2301,4 +2409,4 @@ def i2cDict2Array(nBaths, iArray):
         res = []
         for iOp in iArray:
                 res.append(i2cDict(nBaths, iOp))
-        return res
+
