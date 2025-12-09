@@ -126,17 +126,26 @@ def printExpValues(l, nBaths, es, psis, n=None):
         n = len(es)
     if rank == 0:
         print('E0 = {:7.4f}'.format(es[0]))
-        print(('  i  E-E0  N(3d) N(egDn) N(egUp) N(t2gDn) '
-               'N(t2gUp) Lz(3d) Sz(3d) L^2(3d) S^2(3d)'))
+        print('  i  E-E0  ',"   ".join(f"N({i})   Lz({i})  Sz({i})  L^2({i})  S^2({i})  " for i in range(len(l))))
     if rank == 0 :
         for i,(e,psi) in enumerate(zip(es[:n] - es[0],psis[:n])):
-            oc = getEgT2gOccupation(l, nBaths, psi)
-            print(('{:3d} {:6.3f} {:5.2f} {:6.3f} {:7.3f} {:8.3f} {:7.3f}'
-                   ' {:7.2f} {:6.2f} {:7.2f} {:7.2f}').format(
-                i, e, getTraceDensityMatrix(l, nBaths, psi),
-                oc[0], oc[1], oc[2], oc[3],
-                getLz3d(nBaths, psi), getSz3d(nBaths, psi),
-                getLsqr3d(l, nBaths, psi), getSsqr3d(l, nBaths, psi)))
+            N  = getTraceDensityMatrix(l, nBaths, psi)      
+            Lz = getLz3d(nBaths, psi, len(l))
+            Sz = getSz3d(nBaths, psi, len(l))
+            L2 = getLsqr3d(l, nBaths, psi)
+            S2 = getSsqr3d(l, nBaths, psi)
+        # start with the fixed part
+            row = "{:3d} {:6.3f}".format(i, e)
+            for j in range(len(l)):
+                row += " {:6.3f} {:6.3f} {:6.3f} {:7.3f} {:7.3f}".format(
+                    N[j], Lz[j], Sz[j], L2[j], S2[j]
+                )
+            print(row)
+            #print(('{:3d} {:6.3f} {:5.2f} {:6.3f}'
+            #       ' {:7.2f} {:6.2f} {:7.2f} {:7.2f}').format(
+            #    i, e, getTraceDensityMatrix(l, nBaths, psi),
+            #    getLz3d(nBaths, psi, len(l)), getSz3d(nBaths, psi, len(l)),
+            #    getLsqr3d(l, nBaths, psi), getSsqr3d(l, nBaths, psi)))
         print("\n")
 
 def printThermalExpValues(l, nBaths, es, psis, T=300, cutOff=10):
@@ -154,12 +163,11 @@ def printThermalExpValues(l, nBaths, es, psis, T=300, cutOff=10):
     #occs = thermal_average(
     #    e, np.array([getEgT2gOccupation(l, nBaths, psi) for psi in psis]),
     #    T=T)
-
-    N =thermal_average(e, [getTraceDensityMatrix(l, nBaths, psi) for psi in psis], T=T))
-    Lz=thermal_average(e,[getLz3d(nBaths, psi) for psi in psis], T=T))
-    Sz=thermal_average(e,[getSz3d(nBaths, psi) for psi in psis], T=T))
-    Lsq=thermal_average(e,[getLsqr3d(l, nBaths, psi) for psi in psis], T=T))
-    Ssq=thermal_average(e,[getSsqr3d(l, nBaths, psi) for psi in psis], T=T))
+    N =thermal_average(e, np.array([getTraceDensityMatrix(l, nBaths, psi) for psi in psis]), T=T)
+    Lz=thermal_average(e, np.array([getLz3d(nBaths, psi, len(l)) for psi in psis]), T=T)
+    Sz=thermal_average(e, np.array([getSz3d(nBaths, psi, len(l)) for psi in psis]), T=T)
+    Lsq=thermal_average(e, np.array([getLsqr3d(l, nBaths, psi) for psi in psis]), T=T)
+    Ssq=thermal_average(e,np.array([getSsqr3d(l, nBaths, psi) for psi in psis]), T=T)
     if rank == 0:
         print('<E-E0> = {:4.3f}'.format(thermal_average(e, e, T=T)))
         print('<N(total)> = {:4.3f}'.format(sum(N)))
@@ -170,17 +178,18 @@ def printThermalExpValues(l, nBaths, es, psis, T=300, cutOff=10):
         #print('<N(t2gUp)> = {:4.3f}'.format(occs[3]))  
         print('<Lz(total)> = {:4.3f}'.format(sum(Lz)))
         print('<Sz(total)> = {:4.3f}'.format(sum(Sz)))
-        for hu in range(len(Lz):
-            print('<N(',hu,')> = {:4.3f}'.format(N[hu]))
+        for hu in range(len(Lz)):
+            print("In Valence Orbital set", hu)
+            print('<N> = {:4.3f}'.format(N[hu]))
         #print('<N(egDn)> = {:4.3f}'.format(occs[0]))
         #print('<N(egUp)> = {:4.3f}'.format(occs[1]))  #Doesn't make to much sense to transform into cubic for f orbitals and it is too much work for now to also do it in general
                                                        #Rather plot the densitymatrix if you want
         #print('<N(t2gDn)> = {:4.3f}'.format(occs[2]))
         #print('<N(t2gUp)> = {:4.3f}'.format(occs[3]))
-            print('<Lz(',hu,')> = {:4.3f}'.format(Lz[hu]))
-            print('<Sz(',hu,')> = {:4.3f}'.format(Sz[hu]))
-            print('<S^2(',hu,')> = {:4.3f}'.format(Lsq[hu]))
-            print('<S^2(',hu,')> = {:4.3f}'.format(Ssq[hu]))
+            print('<Lz> = {:4.3f}'.format(Lz[hu]))
+            print('<Sz> = {:4.3f}'.format(Sz[hu]))
+            print('<S^2> = {:4.3f}'.format(Lsq[hu]))
+            print('<S^2> = {:4.3f}'.format(Ssq[hu]))
 
 
 def dc_MLFT(l, llow, n3d_i, c, n2p_i=None, Umat=None):
@@ -239,7 +248,12 @@ def dc_MLFT(l, llow, n3d_i, c, n2p_i=None, Umat=None):
         n=(n2p_i,)+n3d_i
         for s in range(len(U)):
             for i in range(len(n)):
-                Udc[s]+=U[s][i]*n[i]-c
+                if s ==0:
+                    Udc[s]+=U[s][i]*(n[i]+1)  #Talk with Patrik about the smartest implementation here
+                else:
+                    Udc[s]+=U[s][i]*n[i]
+        for s in range(len(Udc)):
+            Udc[s]=Udc[s]-c
         return Udc
 
     else:
@@ -1051,7 +1065,7 @@ def i2c(nBaths, i):
     sys.exit('Can not find spin-orbital state corresponding to index.')
 
 
-def getLz3d(nBaths, psi):
+def getLz3d(nBaths, psi, norb):
     r'''
     Return expectation value :math:`\langle psi| Lz_{3d} |psi \rangle`.
 
@@ -1061,24 +1075,25 @@ def getLz3d(nBaths, psi):
         angular momentum : number of bath states.
     psi : dict
         Multi configurational state.
+    norb: number of valence levels
 
     '''
     # Total number of spin-orbitals in the system
     n_spin_orbitals = sum(2*(2*sum(ang)+len(ang)) + nBath for ang, nBath in nBaths.items())
-    Lz = np.zeros(len(ang))
+    Lz = np.zeros(norb)
     for state, amp in psi.items():
-        tmp = np.zeros(len(ang))
+        tmp = np.zeros(norb)
         for i in psr.bytes2tuple(state, n_spin_orbitals):
             spinOrb = i2c(nBaths, i)
             # Look for spin-orbitals of the shape: spinOrb = ((l, y) s, ml), with l=2.
             if len(spinOrb) == 3:# and spinOrb[0] == 2:
-                tmp[spinorb[0][1]] += spinOrb[2]
+                tmp[spinOrb[0][1]] += spinOrb[2]
         for i in range(len(tmp)):
             Lz[i] += tmp[i] * abs(amp)**2
     return Lz
 
 
-def getSz3d(nBaths, psi):
+def getSz3d(nBaths, psi, norb):
     r"""
     Return expectation value :math:`\langle psi| Sz_{3d} |psi \rangle`.
 
@@ -1088,18 +1103,19 @@ def getSz3d(nBaths, psi):
         angular momentum : number of bath states.
     psi : dict
         Multi configurational state.
+    norb: number of valence levels
 
     """
     # Total number of spin-orbitals in the system
     n_spin_orbitals = sum(2*(2*sum(ang)+len(ang)) + nBath for ang, nBath in nBaths.items())
-    Sz = np.zeros(len(ang))
+    Sz = np.zeros(norb)
     for state,amp in psi.items():
-        tmp = np.zeros(len(ang))
+        tmp = np.zeros(norb)
         for i in psr.bytes2tuple(state, n_spin_orbitals):
             spinOrb = i2c(nBaths,i)
             # Look for spin-orbitals of the shape: spinOrb = (l, s, ml), with l=2.
             if len(spinOrb) == 3:#and spinOrb[0] == 2: no need to check if l=2, full shells don't contribute
-                tmp[spinorb[0][1]] += -1/2 if spinOrb[1]==0 else 1/2
+                tmp[spinOrb[0][1]] += -1/2 if spinOrb[1]==0 else 1/2
         for i in range(len(tmp)):
             Sz[i] += tmp[i] * abs(amp)**2
     return Sz
@@ -1117,7 +1133,7 @@ def getSsqr3d(l, nBaths, psi, tol=1e-8):
         normalized multi configurational state.
 
     '''
-    Ssq=np.zeros(len(l)
+    Ssq=np.zeros(len(l))
     for y in range(len(l)):
         psi1 = applySz3d((l, y), nBaths, psi)
         psi2 = applySplus3d((l, y), nBaths, psi)
@@ -1141,11 +1157,11 @@ def getLsqr3d(l, nBaths, psi, tol=1e-8):
         normalized multi configurational state.
 
     '''
-    Lsq=np.zeros(len(l)
+    Lsq=np.zeros(len(l))
     for y in range(len(l)):
-        psi1 = applyLz3d(l, nBaths, psi)
-        psi2 = applyLplus3d(l, nBaths, psi)
-        psi3 = applyLminus3d(l, nBaths, psi)
+        psi1 = applyLz3d((l, y), nBaths, psi)
+        psi2 = applyLplus3d((l, y), nBaths, psi)
+        psi3 = applyLminus3d((l, y), nBaths, psi)
         L2 = norm2(psi1) + 1/2*(norm2(psi2)+norm2(psi3))
         if L2.imag > tol:
             print('Warning: <L^2> complex valued!')
@@ -1169,18 +1185,18 @@ def getTraceDensityMatrix(l, nBaths, psi):
     """
     # Total number of spin-orbitals in the system
     n_spin_orbitals = sum(2*(2*sum(ang)+len(ang)) + nBath for ang, nBath in nBaths.items())
-    n = 0
+    n = np.zeros(len(l))
     for state, amp in psi.items():
         s = psr.bytes2str(state, n_spin_orbitals)
-        nState = 0
-        for spin in range(2):
-            for y in range(len(l)):
+        for y in range(len(l)):
+            nState = 0
+            for spin in range(2):
                 for m in range(-l[y],l[y]+1):
-                    i = c2i(nBaths, ((l,y) spin, m))
+                    i = c2i(nBaths, ((l,y), spin, m))
                     if s[i] == "1":
                         nState += 1
-        nState *= abs(amp)**2
-        n += nState
+            nState *= abs(amp)**2
+            n[y] += nState
     return n
 
 
@@ -1218,17 +1234,19 @@ def getDensityMatrix(l, nBaths, psi):
     # Total number of spin-orbitals in the system
     n_spin_orbitals = sum(2*(2*sum(ang)+len(ang)) + nBath for ang, nBath in nBaths.items())
     densityMatrix = OrderedDict()
-    for si in range(2):
-        for sj in range(2):
-            for mi in range(-l[y],l[y]+1):
-                    for mj in range(-l[x],l[x]+1):
-                        i = c2i(nBaths, ((l, y), si, mi))
-                        j = c2i(nBaths, ((l, x), sj, mj))
-                        psi_new = a(n_spin_orbitals, i, psi)
-                        psi_new = c(n_spin_orbitals, j, psi_new)
-                        tmp = inner(psi, psi_new)
-                        if tmp != 0:
-                            densityMatrix[(((l, y), si, mi), ((l, x), sj, mj))] = tmp
+    for y in range(len(l)):
+        for x in range(len(l)):
+            for si in range(2):
+                for sj in range(2):
+                    for mi in range(-l[y],l[y]+1):
+                            for mj in range(-l[x],l[x]+1):
+                                i = c2i(nBaths, ((l, y), si, mi))
+                                j = c2i(nBaths, ((l, x), sj, mj))
+                                psi_new = a(n_spin_orbitals, i, psi)
+                                psi_new = c(n_spin_orbitals, j, psi_new)
+                                tmp = inner(psi, psi_new)
+                                if tmp != 0:
+                                    densityMatrix[(((l, y), si, mi), ((l, x), sj, mj))] = tmp
     return densityMatrix
 
 
@@ -1302,8 +1320,8 @@ def getEgT2gOccupation(l, nBaths, psi):
     # |i(cubic)> = sum_j u[j,i] |j(spherical)>
     u = get_spherical_2_cubic_matrix(l, False)
     occs=np.zeros((len(l), 4))
-    for y in range(len(l):
-            eg_dn, eg_up, t2g_dn, t2g_up = 0, 0, 0, 0
+    for y in range(len(l)):
+        eg_dn, eg_up, t2g_dn, t2g_up = 0, 0, 0, 0
         for i in range(2*l[y]+1):
             for j,mj in enumerate(range(-l[y],l[y]+1)):
                 for k,mk in enumerate(range(-l[y],l[y]+1)):
@@ -1343,7 +1361,7 @@ def applySz3d(l, nBaths, psi):
     psi : dict
         Multi-configurational state.
         Product states as keys and amplitudes as values.
-
+    l: tuple with y index that signifies which orbital it is
     Returns
     -------
     psiNew : dict
@@ -1354,11 +1372,10 @@ def applySz3d(l, nBaths, psi):
     n_spin_orbitals = sum(2*(2*sum(ang)+len(ang)) + nBath for ang, nBath in nBaths.items())
     psiNew = {}
     for s in range(2):
-        for y in range(len(l)):
-            for m in range(-l[y],l[y]+1):
-                i = c2i(nBaths,((l,y),s, m))
-                psiP = c(n_spin_orbitals, i, a(n_spin_orbitals, i, psi))
-                addToFirst(psiNew, psiP, 1/2 if s==1 else -1/2)
+        for m in range(-l[0][l[1]],l[0][l[1]]+1):
+            i = c2i(nBaths,(l ,s, m)) #l is in form (l,y) so it does not need changes
+            psiP = c(n_spin_orbitals, i, a(n_spin_orbitals, i, psi))
+            addToFirst(psiNew, psiP, 1/2 if s==1 else -1/2)
     return psiNew
 
 
@@ -1384,11 +1401,10 @@ def applyLz3d(l, nBaths, psi):
     n_spin_orbitals = sum(2*(2*sum(ang)+len(ang)) + nBath for ang, nBath in nBaths.items())
     psiNew = {}
     for s in range(2):
-        for y in range(len(l)):
-            for m in range(-l,l+1):
-                i = c2i(nBaths, ((l, y), s, m))
-                psiP = c(n_spin_orbitals, i, a(n_spin_orbitals, i, psi))
-                addToFirst(psiNew, psiP, m)
+        for m in range(-l[0][l[1]],l[0][l[1]]+1):
+            i = c2i(nBaths, (l, s, m)) #l is in form (l,y), so it looks different here
+            psiP = c(n_spin_orbitals, i, a(n_spin_orbitals, i, psi))
+            addToFirst(psiNew, psiP, m)
     return psiNew
 
 
@@ -1411,16 +1427,15 @@ def applySplus3d(l, nBaths, psi):
 
     '''
     # Total number of spin-orbitals in the system
-    n_spin_orbitals = sum(2*(2*sum(ang)+len(ang))) + nBath for ang, nBath in nBaths.items())
+    n_spin_orbitals = sum(2*(2*sum(ang)+len(ang)) + nBath for ang, nBath in nBaths.items())
     psiNew = {}
-    for y in range(len(l)):
-        for m in range(-l[y],l[y]+1):
-            i = c2i(nBaths,((l, y), 1, m))
-            j = c2i(nBaths,((l, y), 0, m))
-            psiP = c(n_spin_orbitals, i, a(n_spin_orbitals, j, psi))
+    for m in range(-l[0][l[1]],l[0][l[1]]+1):
+        i = c2i(nBaths,(l, 1, m)) #l is already in the form (l,y)
+        j = c2i(nBaths,(l, 0, m)) #l is already in the form (l,y)
+        psiP = c(n_spin_orbitals, i, a(n_spin_orbitals, j, psi))
         # sQ = 1/2.
         # sqrt((sQ-(-sQ))*(sQ+(-sQ)+1)) == 1
-            addToFirst(psiNew, psiP)
+        addToFirst(psiNew, psiP)
     return psiNew
 
 
@@ -1445,14 +1460,12 @@ def applyLplus3d(l, nBaths, psi):
     # Total number of spin-orbitals in the system
     n_spin_orbitals = sum(2*(2*sum(ang)+len(ang)) + nBath for ang, nBath in nBaths.items())
     psiNew = {}
-  
     for s in range(2):
-        for y in range(len(l)):
-            for m in range(-l[y],l[y]):
-                i = c2i(nBaths,((l, y), s, m+1))
-                j = c2i(nBaths,((l, y), s, m))
-                psiP = c(n_spin_orbitals, i, a(n_spin_orbitals, j, psi))
-                addToFirst(psiNew, psiP, sqrt((l-m)*(l+m+1)))
+        for m in range(-l[0][l[1]],l[0][l[1]]):
+            i = c2i(nBaths,(l, s, m+1)) #l is in form (l,y)
+            j = c2i(nBaths,(l, s, m))
+            psiP = c(n_spin_orbitals, i, a(n_spin_orbitals, j, psi))
+            addToFirst(psiNew, psiP, sqrt((l[0][l[1]]-m)*(l[0][l[1]]+m+1)))
     return psiNew
 
 
@@ -1467,7 +1480,7 @@ def applySminus3d(l, nBaths, psi):
     psi : dict
         Multi-configurational state.
         Product states as keys and amplitudes as values.
-
+    
     Returns
     -------
     psiNew : dict
@@ -1477,14 +1490,13 @@ def applySminus3d(l, nBaths, psi):
     # Total number of spin-orbitals in the system
     n_spin_orbitals = sum(2*(2*sum(ang)+len(ang)) + nBath for ang, nBath in nBaths.items())
     psiNew = {}
-    for y in range(len(l)):
-        for m in range(-l[y],l[y]+1):
-            i = c2i(nBaths, ((l, y), 0, m))
-            j = c2i(nBaths, ((l, y), 1, m))
-            psiP = c(n_spin_orbitals, i, a(n_spin_orbitals, j, psi))
+    for m in range(-l[0][l[1]],l[0][l[1]]+1):
+        i = c2i(nBaths, (l, 0, m)) #l is the tuple (l,y)
+        j = c2i(nBaths, (l, 1, m))
+        psiP = c(n_spin_orbitals, i, a(n_spin_orbitals, j, psi))
         # sQ = 1/2.
         # sqrt((sQ+sQ)*(sQ-sQ+1)) == 1
-            addToFirst(psiNew, psiP)
+        addToFirst(psiNew, psiP)
     return psiNew
 
 
@@ -1510,12 +1522,11 @@ def applyLminus3d(l, nBaths, psi):
     n_spin_orbitals = sum(2*(2*sum(ang)+len(ang)) + nBath for ang, nBath in nBaths.items())
     psiNew = {}
     for s in range(2):
-        for y in range(len(l)):
-            for m in range(-l[y]+1,l[y]+1):
-                i = c2i(nBaths, ((l, y), s, m-1))
-                j = c2i(nBaths, ((l, y), s, m))
-                psiP = c(n_spin_orbitals, i, a(n_spin_orbitals, j, psi))
-                addToFirst(psiNew, psiP, sqrt((l+m)*(l-m+1)))
+        for m in range(-l[0][l[1]]+1,l[0][l[1]]+1):
+            i = c2i(nBaths, (l, s, m-1)) #l is the tuple (l,y)
+            j = c2i(nBaths, (l, s, m))
+            psiP = c(n_spin_orbitals, i, a(n_spin_orbitals, j, psi))
+            addToFirst(psiNew, psiP, sqrt((l[0][l[1]]+m)*(l[0][l[1]]-m+1)))
     return psiNew
 
 

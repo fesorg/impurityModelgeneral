@@ -144,9 +144,12 @@ def main(h0_filename,
     # Each element is a XAS polarization vector.
    # epsilons = [[1, 0, 0], [0, 1, 0], [0, 0, 1]] # [[0,0,1]]
     #epsilons = [[0, -1/np.sqrt(2), -1j/np.sqrt(2)], [0, 1/np.sqrt(2), -1j/np.sqrt(2)]]
-    epsilons = [[ -1/np.sqrt(2), -1j/np.sqrt(2), 0], [ 1/np.sqrt(2), -1j/np.sqrt(2), 0],[0,0,1]]
+    #This use #epsilons = [[ -1/np.sqrt(2), -1j/np.sqrt(2), 0], [ 1/np.sqrt(2), -1j/np.sqrt(2), 0],[0,0,1]]
     #epsilons = [[ -1/np.sqrt(2)*np.cos(np.pi/180*0), -1j/np.sqrt(2), -1/np.sqrt(2)*np.sin(np.pi/180*0)], [ 1/np.sqrt(2)*np.cos(np.pi/180*0), -1j/np.sqrt(2), 1/np.sqrt(2)*np.sin(np.pi/180*0)],[np.sin(np.pi/180*0),0,np.cos(np.pi/180*0)]]
     #epsilons = [[-1j/np.sqrt(2), 0, 1/np.sqrt(2)], [ -1j/np.sqrt(2), 0, -1/np.sqrt(2)]]
+    
+    #Ellipstical pi/2 and -pi/2
+    epsilons = [[ 2/np.sqrt(5), -(1* 1j) * np.sqrt(1/5), 0],[ 2/np.sqrt(5), ( 1* 1j) * np.sqrt(1/5), 0]]
     # RIXS parameters
     # Polarization vectors, of in and outgoing photon.
     epsilonsRIXSin = [[1, 0, 0], [0, 1, 0], [0, 0, 1]]  # [[0,0,1]]
@@ -181,7 +184,7 @@ def main(h0_filename,
     l = ls[1]
     restrictions = {}
     # Restriction on impurity orbitals
-    #loop here over ls[1] is tuple until end of frozenset  
+    #loop here over ls[1] is tuple until end of frozenset 
     for y in range(len(l)):
         indices = frozenset(c2i(nBaths, ((l, y), s, m)) for s in range(2) for m in range(-l[y], l[y] + 1))
         restrictions[indices] = (n0imps[l][y] - 1, n0imps[l][y] + dnTols[l][y] + 1)
@@ -223,7 +226,7 @@ def main(h0_filename,
 
     if rank == 0: print("#spin-orbitals:", n_spin_orbitals)
     if rank == 0: print("#hpField:", hpField)
-
+  
     # Hamiltonian
     if rank == 0: print('Construct the Hamiltonian operator...')
     hOp = get_hamiltonian_operator(nBaths, nValBaths, Umat,
@@ -271,10 +274,10 @@ def main(h0_filename,
 
     # Calculate density matrix
     if rank == 0:
-        print('Density matrix (in cubic harmonics basis):')
+        print('Density matrix (in spherical harmonics basis):')
         for i, psi in enumerate(psis):
             print('Eigenstate {:d}'.format(i))
-            n = finite.getDensityMatrixCubic(ls[1], nBaths, psi)
+            n = finite.getDensityMatrix(ls[1], nBaths, psi)
             print('#density matrix elements: {:d}'.format(len(n)))
             for e, ne in n.items():
                 if abs(ne) > tolPrintOccupation:
@@ -661,7 +664,7 @@ if __name__== "__main__":
                          help='SOC values of the other orbitals one wants to excite into.')
     parser.add_argument('--chargeTransferCorrection', type=float, default=1.5,
                         help='Double counting parameter.')
-     parser.add_argument('--ctex', type=float, default=0.0,
+    parser.add_argument('--ctex', type=float, default=0.0,
                         help='Double counting parameter to reduce exchange splitting.')
     parser.add_argument('--hField', type=float, nargs='+', default=[0, 0, 0.0001],
                         help='Magnetic field. (h_x, h_y, h_z)')

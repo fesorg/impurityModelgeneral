@@ -105,7 +105,7 @@ def simulate_spectra(es, psis, hOp, T, w, delta, delta_2, POS, epsilons,
     if rank == 0: t0 = time.time()
 
     # Total number of spin-orbitals in the system
-    n_spin_orbitals = sum(2 * (2 * ang + 1) + nBath for ang, nBath in nBaths.items())
+    n_spin_orbitals = sum(2 * (2 * sum(ang) + len(ang)) + nBath for ang, nBath in nBaths.items())
 
     if rank == 0: print('Create 3d inverse photoemission and photoemission spectra...')
     # Transition operators
@@ -357,8 +357,8 @@ def getDipoleOperator(nBaths, n):
                             tij = gauntC(k=1, l=lv, m=m, lp=lp, mp=mp, prec=16)
                             tij *= nDict[m-mp]
                             if tij != 0:
-                                i = c2i(nBaths, ((lv, y), s, m))
-                                j = c2i(nBaths, ((lp, z), s, mp))
+                                i = c2i(nBaths, ((l2, y), s, m))
+                                j = c2i(nBaths, ((l1, z), s, mp))
                                 tOp[((i, 'c'), (j, 'a'))] = tij
     return tOp
 
@@ -477,8 +477,8 @@ def getNIXSOperator(nBaths, q, li, lj, Ri, Rj, r, kmin=1):
                         tij *= gauntC(k,li,mi,lj,mj,prec=16)
                         if tij != 0:
                             for s in range(2):
-                                i = c2i(nBaths, (li, s, mi))
-                                j = c2i(nBaths, (lj, s, mj))
+                                i = c2i(nBaths, ((li, 0), s, mi))
+                                j = c2i(nBaths, ((lj, 0), s, mj))
                                 process = ((i, 'c'), (j, 'a'))
                                 if process in tOp:
                                     tOp[((i, 'c'), (j, 'a'))] += tij
